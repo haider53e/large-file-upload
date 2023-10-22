@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Upload</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #step2 {
+        display: flex;
+      }
+      #step2 div {
+        display: inline-block;
+        margin: 0 10px;
+      }
+      #percent {
+        display: block;
+        text-align: center;
+      }
+      #step3 button {
+        margin-left: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="step1" class="step">
+      <input type="file" />
+      <button id="do">upload</button>
+    </div>
+    <div id="step2" class="step">
+      <span id="achived">0</span>
+      <div>
+        <progress min="0" max="100"></progress>
+        <span id="percent">0</span>
+      </div>
+      <span id="total">0</span>
+    </div>
+    <div id="step3" class="step">
+      <span id="final"></span>
+      <button>upload another file</button>
+    </div>
+    <script>
+      function formatBytes(bytes, decimals = 2) {
+        if (!Number(bytes)) return "0 Bytes"
+
+        const k = 1024
+        const dm = decimals < 0 ? 0 : decimals
+        const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+      }
+
+      const input = step1.querySelector("input")
+      const upload = step1.querySelector("button")
+      const progress = step2.querySelector("progress")
+      const redo = step3.querySelector("button")
+      const steps = document.querySelectorAll(".step")
+
+      const hideAllStepsExcept = (except) =>
+        steps.forEach((node) => {
+          if (node.id === except) node.style.removeProperty("display")
+          else node.style.display = "none"
+        })
+
+      redo.onclick = function () {
+        input.value = ""
+        hideAllStepsExcept("step1")
+      }
+
+      redo.click()
+
+      upload.onclick = function () {
+        const file = input.files[0]
+
+        if (!file)
+          return window.alert("Choose a file before attempting to upload.")
+
+        if (!file.size)
+          return window.alert("Image file size should not be equal to 0.")
+
+        hideAllStepsExcept("step2")
+        total.textContent = formatBytes(file.size)
+
+        const xhr = new XMLHttpRequest()
+        xhr.open("POST", "/upload")
+        xhr.setRequestHeader("file-extention", input.value.split(".").at(~0))
+
+        xhr.upload.onprogress = ({ loaded, total }) => {
+          achived.textContent = formatBytes(loaded)
+          const value = Math.round((loaded / total) * 100)
+          percent.textContent = value + " %"
+          if (value === 100) progress.removeAttribute("value")
+          else progress.value = value
+        }
+
+        xhr.onloadend = () => {
+          console.log(xhr.responseText)
+          let response
+          try {
+            response = JSON.parse(xhr.responseText)
+          } catch (error) {
+            response = {
+              error: "Something went wrong while communicating with server."
+            }
+          }
+          checkResponse(response)
+        }
+
+        xhr.send(file)
+      }
+
+      function checkResponse(response) {
+        if (response.error) {
+          hideAllStepsExcept("step1")
+          return window.alert(response.error)
+        }
+        final.textContent = response.result
+        hideAllStepsExcept("step3")
+      }
+    </script>
+  </body>
+</html>
