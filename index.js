@@ -5,7 +5,7 @@ import express from "express"
 const app = express()
 
 app.post("/upload", (req, res) => {
-  const maxSize = Infinity
+  const maxSize = 10 * 1024 ** 2
   let size = 0
 
   const random = crypto.randomBytes(2).toString("hex")
@@ -14,12 +14,14 @@ app.post("/upload", (req, res) => {
 
   req.on("data", (chunk) => {
     size += chunk.length
+    if (res.headersSent) return
 
     if (size > maxSize) {
       writeStream.end()
+      fs.unlinkSync("public/" + fileName)
       return res
         .status(400)
-        .send({ result: "File size should not exceed 1MB." })
+        .send({ result: "File size should not exceed 10MB." })
     }
 
     writeStream.write(chunk)
